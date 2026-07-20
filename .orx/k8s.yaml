@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rlm-length-{{ORX_RUN}}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: run
+          image: pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
+          command: ["bash", "-c", "$ORX_SCRIPT"]
+          env:
+            - name: HF_HOME
+              value: /tmp/huggingface
+            - name: TOKENIZERS_PARALLELISM
+              value: "false"
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+              cpu: "48"
+              memory: 192Gi
+            limits:
+              nvidia.com/gpu: "8"
+              cpu: "64"
+              memory: 256Gi
