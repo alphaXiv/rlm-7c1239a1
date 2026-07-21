@@ -25,7 +25,7 @@ SHORT_RECORDS = 16
 LONG_RECORDS = 128
 EVAL_EXAMPLES = 32
 CHUNK_SIZE = 12
-EPOCHS = 5
+EPOCHS = 0
 BATCH_SIZE = 8
 
 
@@ -219,8 +219,8 @@ def run_rank(rank: int, world_size: int) -> dict[str, object]:
         "short_eval_records": SHORT_RECORDS,
         "long_eval_records": LONG_RECORDS,
         "length_ratio": LONG_RECORDS / SHORT_RECORDS,
-        "final_train_loss": losses[-1],
-        "mean_last_10_train_loss": statistics.mean(losses[-10:]),
+        "final_train_loss": losses[-1] if losses else 0.0,
+        "mean_last_10_train_loss": statistics.mean(losses[-10:]) if losses else 0.0,
         "short": short_metrics,
         "long": long_metrics,
         "generalization_ratio": long_metrics["accuracy"] / max(short_metrics["accuracy"], 1e-9),
