@@ -171,7 +171,7 @@ def build_eval_examples(rng: random.Random, n_records: int):
 def run_rank(rank: int, world_size: int) -> dict[str, object]:
     config = json.loads(CONFIG_PATH.read_text())
     harness = config["harness"]
-    seed = 1729 + rank
+    seed = 9001 + rank
     rng = random.Random(seed)
     torch.manual_seed(seed)
     device = torch.device(f"cuda:{rank}")
