@@ -30,9 +30,7 @@ BATCH_SIZE = 8
 
 
 def make_example(rng: random.Random, n_records: int) -> tuple[str, int, list[str]]:
-    max_score = rng.randint(40, 99)
-    scores = [rng.randint(0, max_score - 1) for _ in range(n_records - 1)] + [max_score]
-    rng.shuffle(scores)
+    scores = [rng.randint(0, 99) for _ in range(n_records)]
     records = [f"record {i + 1}: score={score}" for i, score in enumerate(scores)]
     return format_prompt(records, ""), max(scores), records
 
@@ -161,9 +159,7 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
 def build_eval_examples(rng: random.Random, n_records: int):
     examples = []
     for _ in range(EVAL_EXAMPLES):
-        max_score = rng.randint(40, 99)
-        scores = [rng.randint(0, max_score - 1) for _ in range(n_records - 1)] + [max_score]
-        rng.shuffle(scores)
+        scores = [rng.randint(0, 99) for _ in range(n_records)]
         records = [f"record {i + 1}: score={score}" for i, score in enumerate(scores)]
         examples.append((format_prompt(records, ""), max(scores), records, ""))
     return examples
