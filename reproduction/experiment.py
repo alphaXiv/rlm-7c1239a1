@@ -23,7 +23,8 @@ TRAIN_MIN_RECORDS = 4
 TRAIN_MAX_RECORDS = 4
 SHORT_RECORDS = 4
 LONG_RECORDS = 1024
-EVAL_EXAMPLES = 32
+SHORT_EVAL_EXAMPLES = 4096
+LONG_EVAL_EXAMPLES = 32
 CHUNK_SIZE = 4
 EPOCHS = 5
 BATCH_SIZE = 8
@@ -157,9 +158,9 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
     }
 
 
-def build_eval_examples(rng: random.Random, n_records: int):
+def build_eval_examples(rng: random.Random, n_records: int, n_examples: int):
     examples = []
-    for _ in range(EVAL_EXAMPLES):
+    for _ in range(n_examples):
         target = rng.choice(CATEGORIES)
         labels = [rng.choice(CATEGORIES) for _ in range(n_records)]
         records = [f"record {i + 1}: category={label}" for i, label in enumerate(labels)]
@@ -198,8 +199,12 @@ def run_rank(rank: int, world_size: int) -> dict[str, object]:
 
     started = time.time()
     losses = train_model(model, tokenizer, rng, device)
-    short_examples = build_eval_examples(random.Random(seed + 10_000), SHORT_RECORDS)
-    long_examples = build_eval_examples(random.Random(seed + 20_000), LONG_RECORDS)
+    short_examples = build_eval_examples(
+        random.Random(seed + 10_000), SHORT_RECORDS, SHORT_EVAL_EXAMPLES
+    )
+    long_examples = build_eval_examples(
+        random.Random(seed + 20_000), LONG_RECORDS, LONG_EVAL_EXAMPLES
+    )
     short_metrics = evaluate_direct(model, tokenizer, short_examples, device)
     if harness == "direct":
         long_metrics = evaluate_direct(model, tokenizer, long_examples, device)
@@ -217,7 +222,9 @@ def run_rank(rank: int, world_size: int) -> dict[str, object]:
         "train_examples": TRAIN_EXAMPLES,
         "train_length_range": [TRAIN_MIN_RECORDS, TRAIN_MAX_RECORDS],
         "short_eval_records": SHORT_RECORDS,
+        "short_eval_examples": SHORT_EVAL_EXAMPLES,
         "long_eval_records": LONG_RECORDS,
+        "long_eval_examples": LONG_EVAL_EXAMPLES,
         "length_ratio": LONG_RECORDS / SHORT_RECORDS,
         "final_train_loss": losses[-1],
         "mean_last_10_train_loss": statistics.mean(losses[-10:]),
