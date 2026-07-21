@@ -157,6 +157,91 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
     }
 
 
+def score_reduced_predictions(predictions: list[int | None], targets: list[int]) -> dict[str, float]:
+    exact = [prediction == target for prediction, target in zip(predictions, targets, strict=True)]
+    absolute_errors = [
+        abs(prediction - target) if prediction is not None else LONG_RECORDS
+        for prediction, target in zip(predictions, targets, strict=True)
+    ]
+    return {
+        "accuracy": sum(exact) / len(exact),
+        "mae": sum(absolute_errors) / len(absolute_errors),
+        "parse_rate": sum(prediction is not None for prediction in predictions) / len(predictions),
+    }
+
+
+def predict_chunk_values(model, tokenizer, examples, device: torch.device):
+    chunk_prompts: list[str] = []
+    chunk_counts: list[int] = []
+    targets: list[int] = []
+    for _, target_count, records, target in examples:
+        targets.append(target_count)
+        chunks = [records[start : start + CHUNK_SIZE] for start in range(0, len(records), CHUNK_SIZE)]
+        chunk_counts.append(len(chunks))
+        chunk_prompts.extend(format_prompt(chunk, target) for chunk in chunks)
+    flat_predictions = predict(model, tokenizer, chunk_prompts, device)
+    values_by_example: list[list[int | None]] = []
+    offset = 0
+    for count in chunk_counts:
+        values_by_example.append(flat_predictions[offset : offset + count])
+        offset += count
+    return values_by_example, targets
+
+
+def evaluate_flat_lm_reduce(model, tokenizer, examples, device: torch.device) -> dict[str, float]:
+    values_by_example, targets = predict_chunk_values(model, tokenizer, examples, device)
+    reduce_prompts: list[str] = []
+    valid_indices: list[int] = []
+    predictions: list[int | None] = [None] * len(values_by_example)
+    for index, values in enumerate(values_by_example):
+        if all(value is not None for value in values):
+            reduce_prompts.append(
+                "Add these nonnegative integers. Reply with only the integer sum.\nvalues: "
+                + ", ".join(str(value) for value in values)
+                + "\nsum:"
+            )
+            valid_indices.append(index)
+    for index, prediction in zip(
+        valid_indices,
+        predict(model, tokenizer, reduce_prompts, device),
+        strict=True,
+    ):
+        predictions[index] = prediction
+    return score_reduced_predictions(predictions, targets)
+
+
+def evaluate_pairwise_lm_reduce(model, tokenizer, examples, device: torch.device) -> dict[str, float]:
+    values_by_example, targets = predict_chunk_values(model, tokenizer, examples, device)
+    active: list[list[int | None] | None] = [
+        values if all(value is not None for value in values) else None for values in values_by_example
+    ]
+    while any(values is not None and len(values) > 1 for values in active):
+        pair_prompts: list[str] = []
+        for values in active:
+            if values is None:
+                continue
+            for start in range(0, len(values) - 1, 2):
+                pair_prompts.append(
+                    "Add these two nonnegative integers. Reply with only the integer sum.\n"
+                    f"values: {values[start]}, {values[start + 1]}\nsum:"
+                )
+        pair_predictions = iter(predict(model, tokenizer, pair_prompts, device))
+        next_active: list[list[int | None] | None] = []
+        for values in active:
+            if values is None:
+                next_active.append(None)
+                continue
+            reduced: list[int | None] = []
+            for start in range(0, len(values) - 1, 2):
+                reduced.append(next(pair_predictions))
+            if len(values) % 2:
+                reduced.append(values[-1])
+            next_active.append(reduced if all(value is not None for value in reduced) else None)
+        active = next_active
+    predictions = [values[0] if values else None for values in active]
+    return score_reduced_predictions(predictions, targets)
+
+
 def build_eval_examples(rng: random.Random, n_records: int):
     examples = []
     for _ in range(EVAL_EXAMPLES):
@@ -205,6 +290,10 @@ def run_rank(rank: int, world_size: int) -> dict[str, object]:
         long_metrics = evaluate_direct(model, tokenizer, long_examples, device)
     elif harness == "mapreduce":
         long_metrics = evaluate_mapreduce(model, tokenizer, long_examples, device)
+    elif harness == "flat_lm_reduce":
+        long_metrics = evaluate_flat_lm_reduce(model, tokenizer, long_examples, device)
+    elif harness == "pairwise_lm_reduce":
+        long_metrics = evaluate_pairwise_lm_reduce(model, tokenizer, long_examples, device)
     else:
         raise ValueError(f"Unknown harness: {harness}")
 
