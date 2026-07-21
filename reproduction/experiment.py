@@ -22,7 +22,7 @@ TRAIN_EXAMPLES = 2048
 TRAIN_MIN_RECORDS = 8
 TRAIN_MAX_RECORDS = 8
 SHORT_RECORDS = 8
-LONG_RECORDS = 128
+LONG_RECORDS = 512
 EVAL_EXAMPLES = 32
 CHUNK_SIZE = 8
 EPOCHS = 5
@@ -248,7 +248,7 @@ def aggregate(world_size: int) -> None:
         ("elapsed_seconds",),
     )
     summary: dict[str, object] = {
-        "experiment": "short-to-8x-length compositional counting",
+        "experiment": "short-to-64x-length compositional counting",
         "harness": results[0]["harness"],
         "model": MODEL_NAME,
         "seeds": world_size,
