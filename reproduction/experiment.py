@@ -137,7 +137,16 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
         targets.append(target_count)
         chunks = [records[start : start + CHUNK_SIZE] for start in range(0, len(records), CHUNK_SIZE)]
         chunk_counts.append(len(chunks))
-        chunk_prompts.extend(format_prompt(chunk, target) for chunk in chunks)
+        chunk_prompts.extend(
+            format_prompt(
+                [
+                    re.sub(r"^record \d+:", f"record {index + 1}:", record)
+                    for index, record in enumerate(chunk)
+                ],
+                target,
+            )
+            for chunk in chunks
+        )
 
     chunk_predictions = predict(model, tokenizer, chunk_prompts, device)
     predictions: list[int | None] = []
