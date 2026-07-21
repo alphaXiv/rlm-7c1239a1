@@ -27,6 +27,7 @@ EVAL_EXAMPLES = 32
 CHUNK_SIZE = 16
 EPOCHS = 10
 BATCH_SIZE = 8
+INFERENCE_BATCH_SIZE = 4
 
 
 def make_example(rng: random.Random, n_records: int) -> tuple[str, int, list[str]]:
@@ -97,8 +98,8 @@ def parse_count(text: str) -> int | None:
 def predict(model, tokenizer, prompts: list[str], device: torch.device) -> list[int | None]:
     predictions: list[int | None] = []
     model.eval()
-    for start in range(0, len(prompts), 32):
-        batch_prompts = prompts[start : start + 32]
+    for start in range(0, len(prompts), INFERENCE_BATCH_SIZE):
+        batch_prompts = prompts[start : start + INFERENCE_BATCH_SIZE]
         encoded = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(device)
         generated = model.generate(
             **encoded,
