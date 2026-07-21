@@ -143,7 +143,7 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
     offset = 0
     for count in chunk_counts:
         values = chunk_predictions[offset : offset + count]
-        predictions.append(sum(values) if all(value is not None for value in values) else None)
+        predictions.append(max(values) if all(value is not None for value in values) else None)
         offset += count
     exact = [prediction == target for prediction, target in zip(predictions, targets, strict=True)]
     absolute_errors = [
