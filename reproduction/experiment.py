@@ -30,19 +30,17 @@ BATCH_SIZE = 8
 
 
 def make_example(rng: random.Random, n_records: int) -> tuple[str, int, list[str]]:
-    max_score = rng.randint(40, 99)
-    scores = [rng.randint(0, max_score - 1) for _ in range(n_records - 1)] + [max_score]
-    rng.shuffle(scores)
+    scores = [rng.randint(0, 9) for _ in range(n_records)]
     records = [f"record {i + 1}: score={score}" for i, score in enumerate(scores)]
-    return format_prompt(records, ""), max(scores), records
+    return format_prompt(records, ""), sum(scores), records
 
 
 def format_prompt(records: list[str], target: str) -> str:
     body = "\n".join(records)
     return (
-        "Find the largest integer score among these records. "
-        "Reply with only the maximum integer.\n"
-        f"records:\n{body}\nmaximum:"
+        "Add all integer scores among these records. "
+        "Reply with only the total integer sum.\n"
+        f"records:\n{body}\ntotal:"
     )
 
 
@@ -144,7 +142,7 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
     offset = 0
     for count in chunk_counts:
         values = chunk_predictions[offset : offset + count]
-        predictions.append(max(values) if all(value is not None for value in values) else None)
+        predictions.append(sum(values) if all(value is not None for value in values) else None)
         offset += count
     exact = [prediction == target for prediction, target in zip(predictions, targets, strict=True)]
     absolute_errors = [
@@ -161,11 +159,9 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
 def build_eval_examples(rng: random.Random, n_records: int):
     examples = []
     for _ in range(EVAL_EXAMPLES):
-        max_score = rng.randint(40, 99)
-        scores = [rng.randint(0, max_score - 1) for _ in range(n_records - 1)] + [max_score]
-        rng.shuffle(scores)
+        scores = [rng.randint(0, 9) for _ in range(n_records)]
         records = [f"record {i + 1}: score={score}" for i, score in enumerate(scores)]
-        examples.append((format_prompt(records, ""), max(scores), records, ""))
+        examples.append((format_prompt(records, ""), sum(scores), records, ""))
     return examples
 
 
@@ -250,7 +246,7 @@ def aggregate(world_size: int) -> None:
         ("elapsed_seconds",),
     )
     summary: dict[str, object] = {
-        "experiment": "short-to-8x-length compositional maximum",
+        "experiment": "short-to-8x-length compositional sum",
         "harness": results[0]["harness"],
         "model": MODEL_NAME,
         "seeds": world_size,
