@@ -14,7 +14,7 @@ from torch.nn.utils.rnn import pad_sequence
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
+MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
 RESULT_DIR = Path("/tmp/rlm_repro_results")
 CONFIG_PATH = Path(__file__).with_name("config.json")
 CATEGORIES = ("amber", "blue", "coral", "green")
