@@ -18,14 +18,14 @@ MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
 RESULT_DIR = Path("/tmp/rlm_repro_results")
 CONFIG_PATH = Path(__file__).with_name("config.json")
 CATEGORIES = ("amber", "blue", "coral", "green")
-TRAIN_EXAMPLES = 192
+TRAIN_EXAMPLES = 2048
 TRAIN_MIN_RECORDS = 8
 TRAIN_MAX_RECORDS = 16
 SHORT_RECORDS = 16
 LONG_RECORDS = 128
 EVAL_EXAMPLES = 32
 CHUNK_SIZE = 12
-EPOCHS = 3
+EPOCHS = 5
 BATCH_SIZE = 8
 
 
