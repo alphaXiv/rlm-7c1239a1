@@ -22,7 +22,7 @@ TRAIN_EXAMPLES = 2048
 TRAIN_MIN_RECORDS = 8
 TRAIN_MAX_RECORDS = 8
 SHORT_RECORDS = 8
-LONG_RECORDS = 512
+LONG_RECORDS = 1024
 EVAL_EXAMPLES = 32
 CHUNK_SIZE = 8
 EPOCHS = 5
@@ -95,11 +95,13 @@ def parse_count(text: str) -> int | None:
 
 
 @torch.inference_mode()
-def predict(model, tokenizer, prompts: list[str], device: torch.device) -> list[int | None]:
+def predict(
+    model, tokenizer, prompts: list[str], device: torch.device, batch_size: int = 32
+) -> list[int | None]:
     predictions: list[int | None] = []
     model.eval()
-    for start in range(0, len(prompts), 32):
-        batch_prompts = prompts[start : start + 32]
+    for start in range(0, len(prompts), batch_size):
+        batch_prompts = prompts[start : start + batch_size]
         encoded = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(device)
         generated = model.generate(
             **encoded,
@@ -113,8 +115,10 @@ def predict(model, tokenizer, prompts: list[str], device: torch.device) -> list[
     return predictions
 
 
-def evaluate_direct(model, tokenizer, examples, device: torch.device) -> dict[str, float]:
-    predictions = predict(model, tokenizer, [item[0] for item in examples], device)
+def evaluate_direct(
+    model, tokenizer, examples, device: torch.device, batch_size: int = 32
+) -> dict[str, float]:
+    predictions = predict(model, tokenizer, [item[0] for item in examples], device, batch_size)
     targets = [item[1] for item in examples]
     exact = [prediction == target for prediction, target in zip(predictions, targets, strict=True)]
     absolute_errors = [
@@ -202,7 +206,7 @@ def run_rank(rank: int, world_size: int) -> dict[str, object]:
     long_examples = build_eval_examples(random.Random(seed + 20_000), LONG_RECORDS)
     short_metrics = evaluate_direct(model, tokenizer, short_examples, device)
     if harness == "direct":
-        long_metrics = evaluate_direct(model, tokenizer, long_examples, device)
+        long_metrics = evaluate_direct(model, tokenizer, long_examples, device, batch_size=4)
     elif harness == "mapreduce":
         long_metrics = evaluate_mapreduce(model, tokenizer, long_examples, device)
     else:
@@ -248,7 +252,7 @@ def aggregate(world_size: int) -> None:
         ("elapsed_seconds",),
     )
     summary: dict[str, object] = {
-        "experiment": "short-to-64x-length compositional counting",
+        "experiment": "short-to-128x-length compositional counting",
         "harness": results[0]["harness"],
         "model": MODEL_NAME,
         "seeds": world_size,
