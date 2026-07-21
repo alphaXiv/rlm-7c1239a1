@@ -39,6 +39,14 @@ We now also include a [verifiers](https://github.com/PrimeIntellect-ai/verifiers
 > [!NOTE]
 > This repository contains inference code for RLMs with support for various sandbox environments. Open-source contributions are welcome. This repository is maintained by the authors of the paper from the MIT OASYS lab.
 
+## Reproduction: compositional generalization
+
+The autonomous Kubernetes reproduction of [*Language model harnesses are compositional generalizers*](https://arxiv.org/abs/2607.language-model-harnesses) finds that harnesses can compose exact learned local solvers far beyond their training length, provided every subproblem remains in the complete training distribution and the reducer is correct. The verdict is **partially reproduced** because residual local errors, unseen prompt formats, incorrect reducers, and task boundaries limit the claim.
+
+- [Detailed reproduction report](research/compositional-generalization/report.md)
+- [Self-contained marimo notebook](research/compositional-generalization/notebook.py)
+- [Open the notebook in Molab](https://molab.marimo.io/github/alphaXiv/rlm-7c1239a1/blob/main/research/compositional-generalization/notebook.py)
+
 ## Quick Setup
 > [!NOTE]
 > `rlms` requires **Python 3.11 or later**.

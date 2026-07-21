@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "paperId": "2607.language-model-harnesses",
+  "title": "Exact-Support Harnesses Compose Far Beyond Training Length",
+  "description": "Programmatic MapReduce harnesses reproduce extreme length generalization when every local prompt remains in training support and the reducer is correct.",
+  "verdict": "partially-reproduced",
+  "reportPath": "research/compositional-generalization/report.md",
+  "notebookPath": "research/compositional-generalization/notebook.py",
+  "compute": {
+    "backend": "kubernetes",
+    "gpuModel": "NVIDIA RTX PRO 6000 Blackwell",
+    "gpuCount": 16,
+    "wallHours": 11.885146
+  }
+}
