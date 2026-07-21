@@ -97,8 +97,8 @@ def parse_count(text: str) -> int | None:
 def predict(model, tokenizer, prompts: list[str], device: torch.device) -> list[int | None]:
     predictions: list[int | None] = []
     model.eval()
-    for start in range(0, len(prompts), 32):
-        batch_prompts = prompts[start : start + 32]
+    for start in range(0, len(prompts), 4):
+        batch_prompts = prompts[start : start + 4]
         encoded = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(device)
         generated = model.generate(
             **encoded,
