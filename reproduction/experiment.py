@@ -36,13 +36,21 @@ def make_example(rng: random.Random, n_records: int) -> tuple[str, int, list[str
     return format_prompt(records, target), labels.count(target), records
 
 
-def format_prompt(records: list[str], target: str) -> str:
+def format_prompt(records: list[str], target: str, domain: str = "category") -> str:
     body = "\n".join(records)
-    return (
-        "Count how many records have the requested category. "
-        "Reply with only the integer count.\n"
-        f"requested category: {target}\nrecords:\n{body}\ncount:"
-    )
+    if domain == "category":
+        return (
+            "Count how many records have the requested category. "
+            "Reply with only the integer count.\n"
+            f"requested category: {target}\nrecords:\n{body}\ncount:"
+        )
+    if domain == "inventory":
+        return (
+            "Count how many crates have the requested paint color. "
+            "Reply with only the integer count.\n"
+            f"requested color: {target}\ninventory:\n{body}\ncount:"
+        )
+    raise ValueError(f"Unknown evaluation domain: {domain}")
 
 
 def encode_training_example(tokenizer, prompt: str, answer: int) -> tuple[torch.Tensor, torch.Tensor]:
@@ -132,11 +140,11 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
     chunk_prompts: list[str] = []
     chunk_counts: list[int] = []
     targets: list[int] = []
-    for _, target_count, records, target in examples:
+    for _, target_count, records, target, domain in examples:
         targets.append(target_count)
         chunks = [records[start : start + CHUNK_SIZE] for start in range(0, len(records), CHUNK_SIZE)]
         chunk_counts.append(len(chunks))
-        chunk_prompts.extend(format_prompt(chunk, target) for chunk in chunks)
+        chunk_prompts.extend(format_prompt(chunk, target, domain) for chunk in chunks)
 
     chunk_predictions = predict(model, tokenizer, chunk_prompts, device)
     predictions: list[int | None] = []
@@ -157,19 +165,27 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
     }
 
 
-def build_eval_examples(rng: random.Random, n_records: int):
+def build_eval_examples(rng: random.Random, n_records: int, domain: str):
     examples = []
     for _ in range(EVAL_EXAMPLES):
         target = rng.choice(CATEGORIES)
         labels = [rng.choice(CATEGORIES) for _ in range(n_records)]
-        records = [f"record {i + 1}: category={label}" for i, label in enumerate(labels)]
-        examples.append((format_prompt(records, target), labels.count(target), records, target))
+        if domain == "category":
+            records = [f"record {i + 1}: category={label}" for i, label in enumerate(labels)]
+        elif domain == "inventory":
+            records = [f"crate {i + 1}: paint color={label}" for i, label in enumerate(labels)]
+        else:
+            raise ValueError(f"Unknown evaluation domain: {domain}")
+        examples.append(
+            (format_prompt(records, target, domain), labels.count(target), records, target, domain)
+        )
     return examples
 
 
 def run_rank(rank: int, world_size: int) -> dict[str, object]:
     config = json.loads(CONFIG_PATH.read_text())
     harness = config["harness"]
+    eval_domain = config.get("eval_domain", "category")
     seed = 1729 + rank
     rng = random.Random(seed)
     torch.manual_seed(seed)
@@ -198,8 +214,8 @@ def run_rank(rank: int, world_size: int) -> dict[str, object]:
 
     started = time.time()
     losses = train_model(model, tokenizer, rng, device)
-    short_examples = build_eval_examples(random.Random(seed + 10_000), SHORT_RECORDS)
-    long_examples = build_eval_examples(random.Random(seed + 20_000), LONG_RECORDS)
+    short_examples = build_eval_examples(random.Random(seed + 10_000), SHORT_RECORDS, eval_domain)
+    long_examples = build_eval_examples(random.Random(seed + 20_000), LONG_RECORDS, eval_domain)
     short_metrics = evaluate_direct(model, tokenizer, short_examples, device)
     if harness == "direct":
         long_metrics = evaluate_direct(model, tokenizer, long_examples, device)
@@ -214,6 +230,7 @@ def run_rank(rank: int, world_size: int) -> dict[str, object]:
         "seed": seed,
         "model": MODEL_NAME,
         "harness": harness,
+        "eval_domain": eval_domain,
         "train_examples": TRAIN_EXAMPLES,
         "train_length_range": [TRAIN_MIN_RECORDS, TRAIN_MAX_RECORDS],
         "short_eval_records": SHORT_RECORDS,

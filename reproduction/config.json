@@ -1,3 +1,4 @@
 {
-  "harness": "mapreduce"
+  "harness": "mapreduce",
+  "eval_domain": "inventory"
 }
