@@ -30,18 +30,17 @@ BATCH_SIZE = 8
 
 
 def make_example(rng: random.Random, n_records: int) -> tuple[str, int, list[str]]:
-    target = rng.choice(CATEGORIES)
-    labels = [rng.choice(CATEGORIES) for _ in range(n_records)]
-    records = [f"record {i + 1}: category={label}" for i, label in enumerate(labels)]
-    return format_prompt(records, target), labels.count(target), records
+    values = [rng.randint(0, 3) for _ in range(n_records)]
+    records = [f"record {i + 1}: value={value}" for i, value in enumerate(values)]
+    return format_prompt(records, ""), sum(values), records
 
 
 def format_prompt(records: list[str], target: str) -> str:
     body = "\n".join(records)
     return (
-        "Count how many records have the requested category. "
-        "Reply with only the integer count.\n"
-        f"requested category: {target}\nrecords:\n{body}\ncount:"
+        "Add all integer values in these records. "
+        "Reply with only the integer sum.\n"
+        f"records:\n{body}\nsum:"
     )
 
 
@@ -160,10 +159,16 @@ def evaluate_mapreduce(model, tokenizer, examples, device: torch.device) -> dict
 def build_eval_examples(rng: random.Random, n_records: int):
     examples = []
     for _ in range(EVAL_EXAMPLES):
-        target = rng.choice(CATEGORIES)
-        labels = [rng.choice(CATEGORIES) for _ in range(n_records)]
-        records = [f"record {i + 1}: category={label}" for i, label in enumerate(labels)]
-        examples.append((format_prompt(records, target), labels.count(target), records, target))
+        values: list[int] = []
+        records: list[str] = []
+        for start in range(0, n_records, CHUNK_SIZE):
+            chunk_size = min(CHUNK_SIZE, n_records - start)
+            chunk_values = [rng.randint(0, 3) for _ in range(chunk_size)]
+            values.extend(chunk_values)
+            records.extend(
+                f"record {i + 1}: value={value}" for i, value in enumerate(chunk_values)
+            )
+        examples.append((format_prompt(records, ""), sum(values), records, ""))
     return examples
 
 
@@ -248,7 +253,7 @@ def aggregate(world_size: int) -> None:
         ("elapsed_seconds",),
     )
     summary: dict[str, object] = {
-        "experiment": "short-to-8x-length compositional counting",
+        "experiment": "short-to-8x-length compositional numeric sum",
         "harness": results[0]["harness"],
         "model": MODEL_NAME,
         "seeds": world_size,
