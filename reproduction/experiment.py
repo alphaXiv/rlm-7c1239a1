@@ -19,12 +19,12 @@ RESULT_DIR = Path("/tmp/rlm_repro_results")
 CONFIG_PATH = Path(__file__).with_name("config.json")
 CATEGORIES = ("amber", "blue", "coral", "green")
 TRAIN_EXAMPLES = 2048
-TRAIN_MIN_RECORDS = 8
-TRAIN_MAX_RECORDS = 8
-SHORT_RECORDS = 8
+TRAIN_MIN_RECORDS = 4
+TRAIN_MAX_RECORDS = 4
+SHORT_RECORDS = 4
 LONG_RECORDS = 128
 EVAL_EXAMPLES = 32
-CHUNK_SIZE = 8
+CHUNK_SIZE = 4
 EPOCHS = 5
 BATCH_SIZE = 8
 
@@ -248,7 +248,7 @@ def aggregate(world_size: int) -> None:
         ("elapsed_seconds",),
     )
     summary: dict[str, object] = {
-        "experiment": "short-to-8x-length compositional counting",
+        "experiment": "short-to-32x-length compositional counting",
         "harness": results[0]["harness"],
         "model": MODEL_NAME,
         "seeds": world_size,
